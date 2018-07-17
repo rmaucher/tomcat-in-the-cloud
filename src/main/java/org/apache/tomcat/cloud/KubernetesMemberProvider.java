@@ -39,8 +39,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
 
 public class KubernetesMemberProvider extends AbstractMemberProvider {
     private static final Log log = LogFactory.getLog(KubernetesMemberProvider.class);
@@ -95,7 +93,7 @@ public class KubernetesMemberProvider extends AbstractMemberProvider {
             streamProvider = new TokenStreamProvider(saToken, caCertFile);
         } else {
             // TODO: implement CertificateStreamProvider
-            throw new NotImplementedException();
+            throw new UnsupportedOperationException();
         }
 
         String ver = getEnv(ENV_PREFIX + "API_VERSION");
