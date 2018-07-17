@@ -33,8 +33,8 @@ import org.apache.catalina.tribes.MembershipProvider;
 import org.apache.catalina.tribes.group.GroupChannel;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
+import org.apache.tomcat.cloud.CloudMembershipService;
 import org.apache.tomcat.cloud.KubernetesMemberProvider;
-import org.apache.tomcat.cloud.membership.CloudMembershipService;
 
 public class Main {
     private static final Log log = LogFactory.getLog(Main.class);

@@ -17,6 +17,8 @@
 
 package org.apache.tomcat.cloud;
 
+import java.io.IOException;
+import java.net.InetAddress;
 import java.security.AccessController;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -24,6 +26,7 @@ import java.security.PrivilegedAction;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.logging.Logger;
 
 import org.apache.catalina.tribes.membership.Membership;
@@ -70,12 +73,14 @@ public abstract class AbstractMemberProvider extends MembershipProviderBase {
     }
 
     @Override
-    public void start(int level) throws Exception {
-    }
+    public void init(Properties properties) throws IOException {
+        startTime = Instant.now();
 
-    @Override
-    public boolean stop(int level) throws Exception {
-        return true;
+        connectionTimeout = Integer.parseInt(properties.getProperty("connectionTimeout", "1000"));
+        readTimeout = Integer.parseInt(properties.getProperty("readTimeout", "1000"));
+
+        hostName = InetAddress.getLocalHost().getHostName();
+        port = Integer.parseInt(properties.getProperty("tcpListenPort"));
     }
 
     public void setMembership(Membership membership) {

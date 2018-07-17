@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.tomcat.cloud.membership;
+package org.apache.tomcat.cloud;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -84,6 +84,7 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
         }
 
         memberProvider.init(properties);
+        memberProvider.start(level);
         fetchMembers(); // Fetch members synchronously once before starting thread
 
     }
@@ -95,6 +96,11 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
         }
         if ((level & MembershipService.MBR_RX) == 0)
             return;
+        try {
+            memberProvider.stop(level);
+        } catch (Exception e) {
+            log.error("Member provider stop failed", e);
+        }
     }
 
     private void fetchMembers() {

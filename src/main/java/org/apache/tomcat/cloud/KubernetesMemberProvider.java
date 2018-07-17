@@ -19,7 +19,6 @@ package org.apache.tomcat.cloud;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.InetAddress;
 import java.net.URLEncoder;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -27,9 +26,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
 import org.apache.catalina.tribes.Member;
+import org.apache.catalina.tribes.MembershipService;
 import org.apache.catalina.tribes.membership.MemberImpl;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -47,21 +46,18 @@ public class KubernetesMemberProvider extends AbstractMemberProvider {
     private static final String ENV_PREFIX = "OPENSHIFT_KUBE_PING_";
 
     @Override
-    public void init(Properties properties) throws IOException {
-        startTime = Instant.now();
-
-        connectionTimeout = Integer.parseInt(properties.getProperty("connectionTimeout", "1000"));
-        readTimeout = Integer.parseInt(properties.getProperty("readTimeout", "1000"));
-
-        hostName = InetAddress.getLocalHost().getHostName();
-        port = Integer.parseInt(properties.getProperty("tcpListenPort"));
+    public void start(int level) throws Exception {
+        if ((level & MembershipService.MBR_RX) == 0)
+            return;
 
         // Set up Kubernetes API parameters
         String namespace = getEnv(ENV_PREFIX + "NAMESPACE");
         if (namespace == null || namespace.length() == 0)
             throw new RuntimeException("Namespace not set; clustering disabled");
 
-        log.info(String.format("Namespace [%s] set; clustering enabled", namespace));
+        if (log.isDebugEnabled()) {
+            log.debug(String.format("Namespace [%s] set; clustering enabled", namespace));
+        }
 
         String protocol = getEnv(ENV_PREFIX + "MASTER_PROTOCOL");
         String masterHost = null;
@@ -108,6 +104,12 @@ public class KubernetesMemberProvider extends AbstractMemberProvider {
         url = String.format("%s://%s:%s/api/%s/namespaces/%s/pods", protocol, masterHost, masterPort, ver, namespace);
         if (labels != null && labels.length() > 0)
             url = url + "?labelSelector=" + labels;
+    }
+
+    @Override
+    public boolean stop(int level) throws Exception {
+        streamProvider = null;
+        return true;
     }
 
     @Override
