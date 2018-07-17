@@ -60,7 +60,7 @@ public class Main {
             // Servlet Configuration:
             File base = new File(System.getProperty("java.io.tmpdir"));
 
-            if(args[0].equals("--war") && args.length > 1) {
+            if (args.length > 1 && args[0].equals("--war")) {
                 System.out.println("im in !");
                 File war = new File(args[1]);
                 Context ctx = tomcat.addWebapp("/", war.getAbsolutePath());

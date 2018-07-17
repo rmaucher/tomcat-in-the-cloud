@@ -64,8 +64,8 @@ public class KubernetesMemberProvider extends AbstractMemberProvider {
         log.info(String.format("Namespace [%s] set; clustering enabled", namespace));
 
         String protocol = getEnv(ENV_PREFIX + "MASTER_PROTOCOL");
-        String masterHost;
-        String masterPort;
+        String masterHost = null;
+        String masterPort = null;
 
         String certFile = getEnv(ENV_PREFIX + "CLIENT_CERT_FILE", "KUBERNETES_CLIENT_CERTIFICATE_FILE");
 
@@ -112,6 +112,9 @@ public class KubernetesMemberProvider extends AbstractMemberProvider {
 
     @Override
     public Member[] getMembers() {
+        if (streamProvider == null) {
+            return super.getMembers();
+        }
 
         List<MemberImpl> members = new ArrayList<>();
 

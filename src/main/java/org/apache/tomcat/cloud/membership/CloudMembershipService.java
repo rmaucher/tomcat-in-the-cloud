@@ -57,21 +57,11 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
             }
             memberProvider = (MembershipProvider) Class.forName(provider).newInstance();
         }
-        try {
-            // Invoke setMembership on AbstractMemberProvider
-            Method method = memberProvider.getClass().getMethod("setMembership", Membership.class);
-            method.invoke(memberProvider, membership);
-        } catch (NoSuchMethodException e) {
-            log.info("Failed to set Membership on MembershipProvider", e);
-        }
+        channel.addMembershipListener(this);
 
         // TODO: check that all required properties are set
-        log.info("start(" + level + ")");
-
-        if (membership == null) {
-            membership = new Membership(localMember);
-        } else {
-            membership.reset();
+        if (log.isDebugEnabled()) {
+            log.debug("start(" + level + ")");
         }
 
         createOrUpdateLocalMember();
@@ -80,6 +70,19 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
         localMember.setDomain(domain);
         localMember.setServiceStartTime(System.currentTimeMillis());
 
+        if (membership == null) {
+            membership = new Membership(localMember);
+        } else {
+            membership.reset();
+        }
+        try {
+            // Invoke setMembership on AbstractMemberProvider
+            Method method = memberProvider.getClass().getMethod("setMembership", Membership.class);
+            method.invoke(memberProvider, membership);
+        } catch (NoSuchMethodException e) {
+            log.error("Failed to set Membership on MembershipProvider", e);
+        }
+
         memberProvider.init(properties);
         fetchMembers(); // Fetch members synchronously once before starting thread
 
@@ -87,7 +90,9 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
 
     @Override
     public void stop(int level) {
-        log.info("stop(" + level + ")");
+        if (log.isDebugEnabled()) {
+            log.debug("stop(" + level + ")");
+        }
         if ((level & MembershipService.MBR_RX) == 0)
             return;
     }
@@ -96,25 +101,33 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
         if (memberProvider == null)
             return;
 
-        log.info("fetchMembers()");
+        if (log.isDebugEnabled()) {
+            log.debug("fetchMembers()");
+        }
         Member[] members = memberProvider.getMembers();
 
         if (members == null) {
             // TODO: how to handle this?
-            log.info("members == null");
+            if (log.isDebugEnabled()) {
+                log.debug("members == null");
+            }
             return;
         }
 
-        // Display current list of members
-        for (Member member : members) {
-            log.info(member);
+        if (log.isDebugEnabled()) {
+            // Display current list of members
+            for (Member member : members) {
+                log.debug(member);
+            }
+            log.debug("===");
         }
-        log.info("===");
 
         // Add new members & refresh lastHeardFrom timestamp for already known members
         for (Member member : members) {
             if (membership.memberAlive(member)) {
-                log.info("New member: " + member);
+                if (log.isDebugEnabled()) {
+                    log.debug("New member: " + member);
+                }
                 if (channel instanceof MembershipListener) {
                     ((MembershipListener) channel).memberAdded(member);
                 }
@@ -124,7 +137,9 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
         // Delete old members, i.e. those that weren't refreshed in the last update
         Member[] expired = membership.expire(100); // TODO: is 100ms a good value?
         for (Member member : expired) {
-            log.info("Member is dead: " + member);
+            if (log.isDebugEnabled()) {
+                log.debug("Member is dead: " + member);
+            }
             if (channel instanceof MembershipListener) {
                 ((MembershipListener) channel).memberDisappeared(member);
             }
@@ -133,18 +148,23 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
 
     @Override
     public Member getLocalMember(boolean incAliveTime) {
-        log.info("getLocalMember: " + incAliveTime);
+        if (log.isDebugEnabled()) {
+            log.debug("getLocalMember: " + incAliveTime);
+        }
         if (incAliveTime && localMember != null)
             localMember.setMemberAliveTime(System.currentTimeMillis() - localMember.getServiceStartTime());
 
-        if (localMember != null)
+        if (log.isDebugEnabled() && localMember != null) {
             log.info("aliveTime: " + localMember.getMemberAliveTime());
+        }
         return localMember;
     }
 
     @Override
     public void setLocalMemberProperties(String listenHost, int listenPort, int securePort, int udpPort) {
-        log.info(String.format("setLocalMemberProperties(%s, %d, %d, %d)", listenHost, listenPort, securePort, udpPort));
+        if (log.isDebugEnabled()) {
+            log.debug(String.format("setLocalMemberProperties(%s, %d, %d, %d)", listenHost, listenPort, securePort, udpPort));
+        }
         properties.setProperty("tcpListenHost", listenHost);
         properties.setProperty("tcpListenPort", String.valueOf(listenPort));
         properties.setProperty("udpListenPort", String.valueOf(udpPort));
