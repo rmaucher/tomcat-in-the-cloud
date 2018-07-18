@@ -27,14 +27,14 @@ import java.util.logging.Logger;
 
 import org.apache.catalina.Context;
 import org.apache.catalina.LifecycleException;
+import org.apache.catalina.cloud.CloudMembershipService;
+import org.apache.catalina.cloud.membership.KubernetesMembershipProvider;
 import org.apache.catalina.ha.tcp.SimpleTcpCluster;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.tribes.MembershipProvider;
 import org.apache.catalina.tribes.group.GroupChannel;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
-import org.apache.tomcat.cloud.CloudMembershipService;
-import org.apache.tomcat.cloud.KubernetesMemberProvider;
 
 public class Main {
     private static final Log log = LogFactory.getLog(Main.class);
@@ -73,8 +73,8 @@ public class Main {
 
             GroupChannel channel = (GroupChannel) cluster.getChannel();
 
-            // The interesting part: use CloudMembershipService (with KubernetesMemberProvider)
-            MembershipProvider provider = new KubernetesMemberProvider();
+            // The interesting part: use CloudMembershipService (with KubernetesMembershipProvider)
+            MembershipProvider provider = new KubernetesMembershipProvider();
             CloudMembershipService service = new CloudMembershipService();
             service.setMembershipProvider(provider);
             channel.setMembershipService(service);

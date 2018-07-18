@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.tomcat.cloud.stream;
+package org.apache.catalina.cloud.stream;
 
 import java.io.IOException;
 import java.io.BufferedInputStream;

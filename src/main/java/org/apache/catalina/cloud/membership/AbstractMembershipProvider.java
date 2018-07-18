@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.tomcat.cloud;
+package org.apache.catalina.cloud.membership;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -29,12 +29,12 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
 
+import org.apache.catalina.cloud.stream.StreamProvider;
 import org.apache.catalina.tribes.membership.Membership;
 import org.apache.catalina.tribes.membership.MembershipProviderBase;
-import org.apache.tomcat.cloud.stream.StreamProvider;
 
-public abstract class AbstractMemberProvider extends MembershipProviderBase {
-    private static final Logger log = Logger.getLogger(AbstractMemberProvider.class.getName());
+public abstract class AbstractMembershipProvider extends MembershipProviderBase {
+    private static final Logger log = Logger.getLogger(AbstractMembershipProvider.class.getName());
 
     protected String url;
     protected StreamProvider streamProvider;
@@ -49,7 +49,7 @@ public abstract class AbstractMemberProvider extends MembershipProviderBase {
     protected int port;
     protected String hostName;
 
-    public AbstractMemberProvider() {
+    public AbstractMembershipProvider() {
         try {
             md5 = MessageDigest.getInstance("md5");
         } catch (NoSuchAlgorithmException e) {

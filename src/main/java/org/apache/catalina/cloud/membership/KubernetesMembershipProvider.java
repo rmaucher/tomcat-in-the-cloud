@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.tomcat.cloud;
+package org.apache.catalina.cloud.membership;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,20 +27,20 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.catalina.cloud.stream.TokenStreamProvider;
 import org.apache.catalina.tribes.Member;
 import org.apache.catalina.tribes.MembershipService;
 import org.apache.catalina.tribes.membership.MemberImpl;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
-import org.apache.tomcat.cloud.stream.TokenStreamProvider;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
 
-public class KubernetesMemberProvider extends AbstractMemberProvider {
-    private static final Log log = LogFactory.getLog(KubernetesMemberProvider.class);
+public class KubernetesMembershipProvider extends AbstractMembershipProvider {
+    private static final Log log = LogFactory.getLog(KubernetesMembershipProvider.class);
 
     // TODO: what about "pure" Kubernetes?
     private static final String ENV_PREFIX = "OPENSHIFT_KUBE_PING_";

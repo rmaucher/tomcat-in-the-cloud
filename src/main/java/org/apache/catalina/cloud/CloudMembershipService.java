@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.tomcat.cloud;
+package org.apache.catalina.cloud;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -59,12 +59,12 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
             return;
 
         if (membershipProvider == null) {
-            String provider = properties.getProperty("membershipProviderClassName", "org.apache.tomcat.cloud.KubernetesMemberProvider");
+            String provider = properties.getProperty("membershipProviderClassName", "org.apache.catalina.cloud.membership.KubernetesMembershipProvider");
             if (log.isDebugEnabled()) {
                 log.debug("Using membershipProvider: " + provider);
             }
             if ("kubernetes".equals(provider)) {
-                provider = "org.apache.tomcat.cloud.KubernetesMemberProvider";
+                provider = "org.apache.catalina.cloud.membership.KubernetesMembershipProvider";
             }
             membershipProvider = (MembershipProvider) Class.forName(provider).newInstance();
         }
@@ -88,7 +88,7 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
             membership.addMember(localMember);
         }
         try {
-            // Invoke setMembership on AbstractMemberProvider
+            // Invoke setMembership on AbstractMembershipProvider
             Method method = membershipProvider.getClass().getMethod("setMembership", Membership.class);
             method.invoke(membershipProvider, membership);
         } catch (NoSuchMethodException e) {
