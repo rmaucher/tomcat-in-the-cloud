@@ -37,25 +37,36 @@ import org.apache.juli.logging.LogFactory;
 public class CloudMembershipService extends MembershipServiceBase implements Heartbeat {
     private static final Log log = LogFactory.getLog(CloudMembershipService.class);
 
+    private MembershipProvider membershipProvider;
     private StaticMember localMember;
-    private Membership membership;
 
-    private MembershipProvider memberProvider;
+    /*
+     * Unlike the normal Catalina design, the membership service owns the membership
+     * object which allows having more meaningful code in fetchMembers.
+     */
+    private Membership membership;
 
     private byte[] payload;
     private byte[] domain;
+
+    public boolean setProperty(String name, String value) {
+        return (properties.setProperty(name, value) == null);
+    }
 
     @Override
     public void start(int level) throws Exception {
         if ((level & MembershipService.MBR_RX) == 0)
             return;
 
-        if (memberProvider == null) {
-            String provider = properties.getProperty("membershipProvider", "org.apache.tomcat.cloud.KubernetesMemberProvider");
+        if (membershipProvider == null) {
+            String provider = properties.getProperty("membershipProviderClassName", "org.apache.tomcat.cloud.KubernetesMemberProvider");
+            if (log.isDebugEnabled()) {
+                log.debug("Using membershipProvider: " + provider);
+            }
             if ("kubernetes".equals(provider)) {
                 provider = "org.apache.tomcat.cloud.KubernetesMemberProvider";
             }
-            memberProvider = (MembershipProvider) Class.forName(provider).newInstance();
+            membershipProvider = (MembershipProvider) Class.forName(provider).newInstance();
         }
         channel.addMembershipListener(this);
 
@@ -74,17 +85,22 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
             membership = new Membership(localMember);
         } else {
             membership.reset();
+            membership.addMember(localMember);
         }
         try {
             // Invoke setMembership on AbstractMemberProvider
-            Method method = memberProvider.getClass().getMethod("setMembership", Membership.class);
-            method.invoke(memberProvider, membership);
+            Method method = membershipProvider.getClass().getMethod("setMembership", Membership.class);
+            method.invoke(membershipProvider, membership);
         } catch (NoSuchMethodException e) {
             log.error("Failed to set Membership on MembershipProvider", e);
         }
 
-        memberProvider.init(properties);
-        memberProvider.start(level);
+        try {
+            membershipProvider.init(properties);
+            membershipProvider.start(level);
+        } catch (Exception e) {
+            log.error("Membership provider start failed", e);
+        }
         fetchMembers(); // Fetch members synchronously once before starting thread
 
     }
@@ -97,20 +113,20 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
         if ((level & MembershipService.MBR_RX) == 0)
             return;
         try {
-            memberProvider.stop(level);
+            membershipProvider.stop(level);
         } catch (Exception e) {
-            log.error("Member provider stop failed", e);
+            log.error("Membership provider stop failed", e);
         }
     }
 
     private void fetchMembers() {
-        if (memberProvider == null)
+        if (membershipProvider == null)
             return;
 
         if (log.isDebugEnabled()) {
             log.debug("fetchMembers()");
         }
-        Member[] members = memberProvider.getMembers();
+        Member[] members = membershipProvider.getMembers();
 
         if (members == null) {
             // TODO: how to handle this?
@@ -234,11 +250,11 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
 
     @Override
     public MembershipProvider getMembershipProvider() {
-        return memberProvider;
+        return membershipProvider;
     }
 
     public void setMembershipProvider(MembershipProvider memberProvider) {
-        this.memberProvider = memberProvider;
+        this.membershipProvider = memberProvider;
     }
 
     @Override
