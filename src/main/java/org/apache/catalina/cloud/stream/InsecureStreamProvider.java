@@ -23,8 +23,6 @@ import java.net.URLConnection;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
@@ -34,8 +32,11 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
+
 public class InsecureStreamProvider extends AbstractStreamProvider {
-    private static final Logger log = Logger.getLogger(InsecureStreamProvider.class.getName());
+    private static final Log log = LogFactory.getLog(InsecureStreamProvider.class);
 
     static final HostnameVerifier INSECURE_HOSTNAME_VERIFIER = new HostnameVerifier() {
         public boolean verify(String arg0, SSLSession arg1) {
@@ -67,12 +68,12 @@ public class InsecureStreamProvider extends AbstractStreamProvider {
             HttpsURLConnection httpsConnection = HttpsURLConnection.class.cast(connection);
             httpsConnection.setHostnameVerifier(INSECURE_HOSTNAME_VERIFIER);
             httpsConnection.setSSLSocketFactory(factory);
-            if (log.isLoggable(Level.FINE)) {
-                log.fine(String.format("Using HttpsURLConnection with SSLSocketFactory [%s] for url [%s].", factory, url));
+            if (log.isDebugEnabled()) {
+                log.debug(String.format("Using HttpsURLConnection with SSLSocketFactory [%s] for url [%s].", factory, url));
             }
         } else {
-            if (log.isLoggable(Level.FINE)) {
-                log.fine(String.format("Using URLConnection for url [%s].", url));
+            if (log.isDebugEnabled()) {
+                log.debug(String.format("Using URLConnection for url [%s].", url));
             }
         }
         return connection.getInputStream();

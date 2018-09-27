@@ -22,7 +22,5 @@ import java.io.InputStream;
 import java.util.Map;
 
 public interface StreamProvider {
-
     public InputStream openStream(String url, Map<String, String> headers, int connectTimeout, int readTimeout) throws IOException;
-
 }

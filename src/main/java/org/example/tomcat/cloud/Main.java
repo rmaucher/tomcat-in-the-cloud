@@ -28,12 +28,8 @@ import org.apache.catalina.ha.tcp.SimpleTcpCluster;
 import org.apache.catalina.startup.Tomcat;
 import org.apache.catalina.tribes.MembershipProvider;
 import org.apache.catalina.tribes.group.GroupChannel;
-import org.apache.juli.logging.Log;
-import org.apache.juli.logging.LogFactory;
 
 public class Main {
-    private static final Log log = LogFactory.getLog(Main.class);
-
     public static void main(String[] args) throws LifecycleException, IOException {
         // Embedded Tomcat Configuration:
 
@@ -43,8 +39,6 @@ public class Main {
             tomcat.getConnector();
 
             // Servlet Configuration:
-            File base = new File(System.getProperty("java.io.tmpdir"));
-
             if (args.length > 1 && args[0].equals("--war")) {
                 System.out.println("im in !");
                 File war = new File(args[1]);

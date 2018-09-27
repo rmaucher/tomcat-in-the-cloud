@@ -21,15 +21,16 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
 
 public abstract class AbstractStreamProvider implements StreamProvider {
-    private static final Logger log = Logger.getLogger(AbstractStreamProvider.class.getName());
+    private static final Log log = LogFactory.getLog(AbstractStreamProvider.class);
 
     public URLConnection openConnection(String url, Map<String, String> headers, int connectTimeout, int readTimeout) throws IOException {
-        if (log.isLoggable(Level.FINE)) {
-            log.log(Level.FINE, String.format("%s opening connection: url [%s], headers [%s], connectTimeout [%s], readTimeout [%s]", getClass().getSimpleName(), url, headers, connectTimeout, readTimeout));
+        if (log.isDebugEnabled()) {
+            log.debug(String.format("%s opening connection: url [%s], headers [%s], connectTimeout [%s], readTimeout [%s]", getClass().getSimpleName(), url, headers, connectTimeout, readTimeout));
         }
         URLConnection connection = new URL(url).openConnection();
         if (headers != null) {

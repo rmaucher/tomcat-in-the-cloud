@@ -17,18 +17,16 @@
 
 package org.apache.catalina.cloud.stream;
 
-import java.io.IOException;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
-import java.io.InputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URLConnection;
 import java.security.KeyStore;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -36,10 +34,13 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
+
 
 public class TokenStreamProvider extends AbstractStreamProvider {
 
-    private static final Logger log = Logger.getLogger(TokenStreamProvider.class.getName());
+    private static final Log log = LogFactory.getLog(TokenStreamProvider.class);
 
     private String token;
 
@@ -65,12 +66,12 @@ public class TokenStreamProvider extends AbstractStreamProvider {
             HttpsURLConnection httpsConnection = HttpsURLConnection.class.cast(connection);
             //httpsConnection.setHostnameVerifier(InsecureStreamProvider.INSECURE_HOSTNAME_VERIFIER);
             httpsConnection.setSSLSocketFactory(getSSLSocketFactory());
-            if (log.isLoggable(Level.FINE)) {
-                log.fine(String.format("Using HttpsURLConnection with SSLSocketFactory [%s] for url [%s].", factory, url));
+            if (log.isDebugEnabled()) {
+                log.debug(String.format("Using HttpsURLConnection with SSLSocketFactory [%s] for url [%s].", factory, url));
             }
         } else {
-            if (log.isLoggable(Level.FINE)) {
-                log.fine(String.format("Using URLConnection for url [%s].", url));
+            if (log.isDebugEnabled()) {
+                log.debug(String.format("Using URLConnection for url [%s].", url));
             }
         }
 
@@ -99,14 +100,14 @@ public class TokenStreamProvider extends AbstractStreamProvider {
                     pemInputStream.close();
                 }
             } catch (FileNotFoundException fnfe) {
-                log.log(Level.SEVERE, "ca cert file not found: " + caCertFile);
+                log.error("ca cert file not found: " + caCertFile);
                 throw fnfe;
             } catch (Exception e) {
-                log.log(Level.SEVERE, "Could not create trust manager for " + caCertFile, e);
+                log.error("Could not create trust manager for " + caCertFile, e);
                 throw e;
             }
         } else {
-            log.log(Level.WARNING, "ca cert file undefined");
+            log.warn("ca cert file undefined");
             return InsecureStreamProvider.INSECURE_TRUST_MANAGERS;
         }
     }
