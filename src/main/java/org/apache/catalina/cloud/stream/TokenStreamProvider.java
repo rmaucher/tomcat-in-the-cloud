@@ -43,9 +43,7 @@ public class TokenStreamProvider extends AbstractStreamProvider {
     private static final Log log = LogFactory.getLog(TokenStreamProvider.class);
 
     private String token;
-
     private String caCertFile;
-
     private SSLSocketFactory factory;
 
     public TokenStreamProvider(String token, String caCertFile) {
@@ -56,8 +54,6 @@ public class TokenStreamProvider extends AbstractStreamProvider {
     public InputStream openStream(String url, Map<String, String> headers, int connectTimeout, int readTimeout)
             throws IOException {
         if (token != null) {
-            // curl -k -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
-            // https://172.30.0.2:443/api/v1/namespaces/dward/pods?labelSelector=application%3Deap-app
             headers.put("Authorization", "Bearer " + token);
         }
         URLConnection connection = openConnection(url, headers, connectTimeout, readTimeout);
@@ -75,7 +71,11 @@ public class TokenStreamProvider extends AbstractStreamProvider {
             }
         }
 
-        return connection.getInputStream();
+        try {
+            return connection.getInputStream();
+        } catch (IOException e) {
+            throw new IOException(String.format("Failed connection to [%s] with token [%s] and CA [%s]", url, token, caCertFile), e);
+        }
     }
 
     private TrustManager[] configureCaCert(String caCertFile) throws Exception {
