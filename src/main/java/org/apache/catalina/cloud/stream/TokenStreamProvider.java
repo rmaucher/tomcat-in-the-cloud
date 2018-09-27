@@ -54,6 +54,11 @@ public class TokenStreamProvider extends AbstractStreamProvider {
 
     public InputStream openStream(String url, Map<String, String> headers, int connectTimeout, int readTimeout)
             throws IOException {
+        if (token != null) {
+            // curl -k -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+            // https://172.30.0.2:443/api/v1/namespaces/dward/pods?labelSelector=application%3Deap-app
+            headers.put("Authorization", "Bearer " + token);
+        }
         URLConnection connection = openConnection(url, headers, connectTimeout, readTimeout);
 
         if (connection instanceof HttpsURLConnection) {
@@ -69,11 +74,6 @@ public class TokenStreamProvider extends AbstractStreamProvider {
             }
         }
 
-        if (token != null) {
-            // curl -k -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
-            // https://172.30.0.2:443/api/v1/namespaces/dward/pods?labelSelector=application%3Deap-app
-            headers.put("Authorization", "Bearer " + token);
-        }
         return connection.getInputStream();
     }
 
