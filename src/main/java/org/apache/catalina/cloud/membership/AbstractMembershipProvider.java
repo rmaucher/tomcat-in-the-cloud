@@ -27,14 +27,17 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.logging.Logger;
 
 import org.apache.catalina.cloud.stream.StreamProvider;
+import org.apache.catalina.tribes.Heartbeat;
+import org.apache.catalina.tribes.Member;
 import org.apache.catalina.tribes.membership.Membership;
 import org.apache.catalina.tribes.membership.MembershipProviderBase;
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
 
-public abstract class AbstractMembershipProvider extends MembershipProviderBase {
-    private static final Logger log = Logger.getLogger(AbstractMembershipProvider.class.getName());
+public abstract class AbstractMembershipProvider extends MembershipProviderBase implements Heartbeat {
+    private static final Log log = LogFactory.getLog(KubernetesMembershipProvider.class);
 
     protected String url;
     protected StreamProvider streamProvider;
@@ -86,4 +89,26 @@ public abstract class AbstractMembershipProvider extends MembershipProviderBase 
     public void setMembership(Membership membership) {
         this.membership = membership;
     }
+
+    @Override
+    public void heartbeat() {
+        Member[] announcedMembers = fetchMembers();
+        // Add new members or refresh the members in the membership
+        for (Member member : announcedMembers) {
+            membership.memberAlive(member);
+        }
+        // Remove non refreshed members from the membership
+        Member[] expired = membership.expire(100); // TODO: is 100ms a good value?
+        for (Member member : expired) {
+            if (log.isDebugEnabled()) {
+                log.debug("Member is dead: " + member);
+            }
+        }
+    }
+
+    /**
+     * Fetch current cluster members from the cloud orchestration.
+     * @return the member array
+     */
+    protected abstract Member[] fetchMembers();
 }

@@ -25,12 +25,11 @@ import java.security.NoSuchAlgorithmException;
 
 import org.apache.catalina.tribes.Heartbeat;
 import org.apache.catalina.tribes.Member;
-import org.apache.catalina.tribes.MembershipListener;
 import org.apache.catalina.tribes.MembershipProvider;
 import org.apache.catalina.tribes.MembershipService;
+import org.apache.catalina.tribes.membership.MemberImpl;
 import org.apache.catalina.tribes.membership.Membership;
 import org.apache.catalina.tribes.membership.MembershipServiceBase;
-import org.apache.catalina.tribes.membership.StaticMember;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
@@ -38,7 +37,7 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
     private static final Log log = LogFactory.getLog(CloudMembershipService.class);
 
     private MembershipProvider membershipProvider;
-    private StaticMember localMember;
+    private MemberImpl localMember;
 
     /*
      * Unlike the normal Catalina design, the membership service owns the membership
@@ -68,7 +67,6 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
             }
             membershipProvider = (MembershipProvider) Class.forName(provider).newInstance();
         }
-        channel.addMembershipListener(this);
 
         // TODO: check that all required properties are set
         if (log.isDebugEnabled()) {
@@ -83,9 +81,6 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
 
         if (membership == null) {
             membership = new Membership(localMember);
-        } else {
-            membership.reset();
-            membership.addMember(localMember);
         }
         try {
             // Invoke setMembership on AbstractMembershipProvider
@@ -101,8 +96,6 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
         } catch (Exception e) {
             log.error("Membership provider start failed", e);
         }
-        fetchMembers(); // Fetch members synchronously once before starting thread
-
     }
 
     @Override
@@ -116,55 +109,6 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
             membershipProvider.stop(level);
         } catch (Exception e) {
             log.error("Membership provider stop failed", e);
-        }
-    }
-
-    private void fetchMembers() {
-        if (membershipProvider == null)
-            return;
-
-        if (log.isDebugEnabled()) {
-            log.debug("fetchMembers()");
-        }
-        Member[] members = membershipProvider.getMembers();
-
-        if (members == null) {
-            // TODO: how to handle this?
-            if (log.isDebugEnabled()) {
-                log.debug("members == null");
-            }
-            return;
-        }
-
-        if (log.isDebugEnabled()) {
-            // Display current list of members
-            for (Member member : members) {
-                log.debug(member);
-            }
-            log.debug("===");
-        }
-
-        // Add new members & refresh lastHeardFrom timestamp for already known members
-        for (Member member : members) {
-            if (membership.memberAlive(member)) {
-                if (log.isDebugEnabled()) {
-                    log.debug("New member: " + member);
-                }
-                if (channel instanceof MembershipListener) {
-                    ((MembershipListener) channel).memberAdded(member);
-                }
-            }
-        }
-
-        // Delete old members, i.e. those that weren't refreshed in the last update
-        Member[] expired = membership.expire(100); // TODO: is 100ms a good value?
-        for (Member member : expired) {
-            if (log.isDebugEnabled()) {
-                log.debug("Member is dead: " + member);
-            }
-            if (channel instanceof MembershipListener) {
-                ((MembershipListener) channel).memberDisappeared(member);
-            }
         }
     }
 
@@ -210,7 +154,7 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
         int udpPort = Integer.parseInt(properties.getProperty("udpListenPort"));
 
         if (localMember == null) {
-            localMember = new StaticMember(host, port, 0);
+            localMember = new MemberImpl();
             try {
                 // Set localMember unique ID to md5 hash of hostname
                 localMember.setUniqueId(MessageDigest
@@ -218,15 +162,12 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
                         .digest(InetAddress
                                 .getLocalHost().getHostName().getBytes()));
             } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
+                throw new IOException(e);
             }
-
             localMember.setLocal(true);
-        } else {
-            localMember.setHostname(host);
-            localMember.setPort(port);
         }
-
+        localMember.setHostname(host);
+        localMember.setPort(port);
         localMember.setSecurePort(securePort);
         localMember.setUdpPort(udpPort);
         localMember.getData(true, true);
@@ -259,6 +200,8 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
 
     @Override
     public void heartbeat() {
-        fetchMembers();
+        if (membershipProvider instanceof Heartbeat) {
+            ((Heartbeat) membershipProvider).heartbeat();
+        }
     }
 }
