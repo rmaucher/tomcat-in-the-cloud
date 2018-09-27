@@ -104,6 +104,9 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
         url = String.format("%s://%s:%s/api/%s/namespaces/%s/pods", protocol, masterHost, masterPort, ver, namespace);
         if (labels != null && labels.length() > 0)
             url = url + "?labelSelector=" + labels;
+
+        // Fetch initial members
+        heartbeat();
     }
 
     @Override
