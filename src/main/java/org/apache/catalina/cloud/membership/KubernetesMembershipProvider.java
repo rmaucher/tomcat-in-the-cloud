@@ -177,7 +177,7 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
                 members.add(member);
             }
         } catch (IOException e) {
-            log.warn("Failed stream open: ", e);
+            log.warn("Failed stream open with token " + headers.get("Authorization"), e);
         }
 
         return members.toArray(new Member[0]);
