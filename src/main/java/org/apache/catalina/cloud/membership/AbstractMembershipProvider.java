@@ -92,6 +92,7 @@ public abstract class AbstractMembershipProvider extends MembershipProviderBase 
 
     @Override
     public void heartbeat() {
+        log.debug("Fetching announced members");
         Member[] announcedMembers = fetchMembers();
         // Add new members or refresh the members in the membership
         for (Member member : announcedMembers) {

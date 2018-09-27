@@ -18,11 +18,13 @@
 package org.apache.catalina.cloud;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import org.apache.catalina.tribes.ChannelListener;
 import org.apache.catalina.tribes.Heartbeat;
 import org.apache.catalina.tribes.Member;
 import org.apache.catalina.tribes.MembershipProvider;
@@ -33,7 +35,7 @@ import org.apache.catalina.tribes.membership.MembershipServiceBase;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
-public class CloudMembershipService extends MembershipServiceBase implements Heartbeat {
+public class CloudMembershipService extends MembershipServiceBase implements ChannelListener, Heartbeat {
     private static final Log log = LogFactory.getLog(CloudMembershipService.class);
 
     private MembershipProvider membershipProvider;
@@ -96,6 +98,9 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
         } catch (Exception e) {
             log.error("Membership provider start failed", e);
         }
+
+        // FIXME: Temporary trick to get the heartbeat
+        channel.addChannelListener(this);
     }
 
     @Override
@@ -203,5 +208,14 @@ public class CloudMembershipService extends MembershipServiceBase implements Hea
         if (membershipProvider instanceof Heartbeat) {
             ((Heartbeat) membershipProvider).heartbeat();
         }
+    }
+
+    @Override
+    public void messageReceived(Serializable msg, Member sender) {
+    }
+
+    @Override
+    public boolean accept(Serializable msg, Member sender) {
+        return false;
     }
 }

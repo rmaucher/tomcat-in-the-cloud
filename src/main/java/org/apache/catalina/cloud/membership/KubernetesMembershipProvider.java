@@ -114,6 +114,10 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
 
     @Override
     protected Member[] fetchMembers() {
+        if (streamProvider == null) {
+            return new Member[0];
+        }
+
         List<MemberImpl> members = new ArrayList<>();
 
         try (InputStream stream = streamProvider.openStream(url, headers, connectionTimeout, readTimeout)) {
