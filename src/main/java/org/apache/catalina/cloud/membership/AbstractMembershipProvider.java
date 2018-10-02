@@ -31,6 +31,8 @@ import java.util.Properties;
 import org.apache.catalina.cloud.stream.StreamProvider;
 import org.apache.catalina.tribes.Heartbeat;
 import org.apache.catalina.tribes.Member;
+import org.apache.catalina.tribes.MembershipListener;
+import org.apache.catalina.tribes.MembershipService;
 import org.apache.catalina.tribes.membership.Membership;
 import org.apache.catalina.tribes.membership.MembershipProviderBase;
 import org.apache.juli.logging.Log;
@@ -51,6 +53,9 @@ public abstract class AbstractMembershipProvider extends MembershipProviderBase 
 
     protected int port;
     protected String hostName;
+
+    // FIXME: remove after Tomcat 9.0.13
+    protected MembershipService service = null;
 
     public AbstractMembershipProvider() {
         try {
@@ -86,8 +91,25 @@ public abstract class AbstractMembershipProvider extends MembershipProviderBase 
         port = Integer.parseInt(properties.getProperty("tcpListenPort"));
     }
 
-    public void setMembership(Membership membership) {
-        this.membership = membership;
+    @Override
+    public void start(int level) throws Exception {
+        if (membership == null) {
+            membership = new Membership(service.getLocalMember(true));
+        }
+    }
+
+    @Override
+    public boolean stop(int level) throws Exception {
+        return true;
+    }
+
+    // FIXME: remove after Tomcat 9.0.13
+    @Override
+    public void setMembershipListener(MembershipListener listener) {
+        super.setMembershipListener(listener);
+        if (listener instanceof MembershipService) {
+            service = (MembershipService) listener;
+        }
     }
 
     @Override

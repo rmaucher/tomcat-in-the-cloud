@@ -51,6 +51,8 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
             return;
         }
 
+        super.start(level);
+
         // Set up Kubernetes API parameters
         String namespace = getEnv(ENV_PREFIX + "NAMESPACE", "KUBERNETES_NAMESPACE");
         if (namespace == null || namespace.length() == 0)
@@ -124,8 +126,11 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
 
     @Override
     public boolean stop(int level) throws Exception {
-        streamProvider = null;
-        return true;
+        try {
+            return super.stop(level);
+        } finally {
+            streamProvider = null;
+        }
     }
 
     @Override

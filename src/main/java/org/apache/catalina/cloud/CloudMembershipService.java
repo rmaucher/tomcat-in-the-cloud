@@ -19,7 +19,6 @@ package org.apache.catalina.cloud;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -30,7 +29,6 @@ import org.apache.catalina.tribes.Member;
 import org.apache.catalina.tribes.MembershipProvider;
 import org.apache.catalina.tribes.MembershipService;
 import org.apache.catalina.tribes.membership.MemberImpl;
-import org.apache.catalina.tribes.membership.Membership;
 import org.apache.catalina.tribes.membership.MembershipServiceBase;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -41,12 +39,6 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
     private MembershipProvider membershipProvider;
     private MemberImpl localMember;
 
-    /*
-     * Unlike the normal Catalina design, the membership service owns the membership
-     * object which allows having more meaningful code in fetchMembers.
-     */
-    private Membership membership;
-
     private byte[] payload;
     private byte[] domain;
 
@@ -56,8 +48,9 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
 
     @Override
     public void start(int level) throws Exception {
-        if ((level & MembershipService.MBR_RX) == 0)
+        if ((level & MembershipService.MBR_RX) == 0) {
             return;
+        }
 
         if (membershipProvider == null) {
             String provider = properties.getProperty("membershipProviderClassName", "org.apache.catalina.cloud.membership.KubernetesMembershipProvider");
@@ -81,18 +74,9 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
         localMember.setDomain(domain);
         localMember.setServiceStartTime(System.currentTimeMillis());
 
-        if (membership == null) {
-            membership = new Membership(localMember);
-        }
         try {
-            // Invoke setMembership on AbstractMembershipProvider
-            Method method = membershipProvider.getClass().getMethod("setMembership", Membership.class);
-            method.invoke(membershipProvider, membership);
-        } catch (NoSuchMethodException e) {
-            log.error("Failed to set Membership on MembershipProvider", e);
-        }
-
-        try {
+            //FIXME: uncomment after Tomcat 9.0.13
+            //membershipProvider.setMembershipService(this);
             membershipProvider.setMembershipListener(this);
             membershipProvider.init(properties);
             membershipProvider.start(level);
@@ -109,8 +93,9 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
         if (log.isDebugEnabled()) {
             log.debug("stop(" + level + ")");
         }
-        if ((level & MembershipService.MBR_RX) == 0)
+        if ((level & MembershipService.MBR_RX) == 0) {
             return;
+        }
         try {
             membershipProvider.stop(level);
         } catch (Exception e) {
