@@ -27,6 +27,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.catalina.cloud.stream.CertificateStreamProvider;
 import org.apache.catalina.cloud.stream.TokenStreamProvider;
 import org.apache.catalina.tribes.Member;
 import org.apache.catalina.tribes.MembershipService;
@@ -102,7 +103,7 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
             if (clientKeyAlgo == null) {
                 clientKeyAlgo = "RSA";
             }
-            // TODO: implement CertificateStreamProvider
+            streamProvider = new CertificateStreamProvider(clientCertificateFile, clientKeyFile, clientKeyPassword, clientKeyAlgo, caCertFile);
             throw new UnsupportedOperationException();
         }
 
