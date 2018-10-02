@@ -93,6 +93,7 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
         }
 
         try {
+            membershipProvider.setMembershipListener(this);
             membershipProvider.init(properties);
             membershipProvider.start(level);
         } catch (Exception e) {

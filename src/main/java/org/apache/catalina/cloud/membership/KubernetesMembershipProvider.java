@@ -47,11 +47,12 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
 
     @Override
     public void start(int level) throws Exception {
-        if ((level & MembershipService.MBR_RX) == 0)
+        if ((level & MembershipService.MBR_RX) == 0) {
             return;
+        }
 
         // Set up Kubernetes API parameters
-        String namespace = getEnv(ENV_PREFIX + "NAMESPACE");
+        String namespace = getEnv(ENV_PREFIX + "NAMESPACE", "KUBERNETES_NAMESPACE");
         if (namespace == null || namespace.length() == 0)
             throw new RuntimeException("Namespace not set; clustering disabled");
 
@@ -59,28 +60,30 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
             log.debug(String.format("Namespace [%s] set; clustering enabled", namespace));
         }
 
-        String protocol = getEnv(ENV_PREFIX + "MASTER_PROTOCOL");
+        String protocol = getEnv(ENV_PREFIX + "MASTER_PROTOCOL", "KUBERNETES_MASTER_PROTOCOL");
         String masterHost = null;
         String masterPort = null;
 
-        String certFile = getEnv(ENV_PREFIX + "CLIENT_CERT_FILE", "KUBERNETES_CLIENT_CERTIFICATE_FILE");
+        String clientCertificateFile = getEnv(ENV_PREFIX + "CLIENT_CERT_FILE", "KUBERNETES_CLIENT_CERTIFICATE_FILE");
+        String caCertFile = getEnv(ENV_PREFIX + "CA_CERT_FILE", "KUBERNETES_CA_CERTIFICATE_FILE");
+        if (caCertFile == null) {
+            caCertFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
+        }
 
-        if (certFile == null) {
-            if (protocol == null)
+        if (clientCertificateFile == null) {
+            if (protocol == null) {
                 protocol = "https";
+            }
 
             masterHost = getEnv(ENV_PREFIX + "MASTER_HOST", "KUBERNETES_SERVICE_HOST");
             masterPort = getEnv(ENV_PREFIX + "MASTER_PORT", "KUBERNETES_SERVICE_PORT");
-            String saTokenFile = getEnv(ENV_PREFIX + "SA_TOKEN_FILE");
-            if (saTokenFile == null)
+            String saTokenFile = getEnv(ENV_PREFIX + "SA_TOKEN_FILE", "SA_TOKEN_FILE");
+            if (saTokenFile == null) {
                 saTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+            }
 
             byte[] bytes = Files.readAllBytes(FileSystems.getDefault().getPath(saTokenFile));
             String saToken = new String(bytes);
-
-            String caCertFile = getEnv(ENV_PREFIX + "CA_CERT_FILE", "KUBERNETES_CA_CERTIFICATE_FILE");
-            if (caCertFile == null)
-                caCertFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
 
             // Preemptively add authorization token in headers
             // (TokenStreamProvider does it too, but too late)
@@ -88,22 +91,32 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
             headers.put("Authorization", "Bearer " + saToken);
             streamProvider = new TokenStreamProvider(saToken, caCertFile);
         } else {
+            if (protocol == null) {
+                protocol = "http";
+            }
+            String clientKeyFile = getEnv("KUBERNETES_CLIENT_KEY_FILE");
+            String clientKeyPassword = getEnv("KUBERNETES_CLIENT_KEY_PASSWORD");
+            String clientKeyAlgo = getEnv("KUBERNETES_CLIENT_KEY_ALGO");
+            if (clientKeyAlgo == null) {
+                clientKeyAlgo = "RSA";
+            }
             // TODO: implement CertificateStreamProvider
             throw new UnsupportedOperationException();
         }
 
-        String ver = getEnv(ENV_PREFIX + "API_VERSION");
+        String ver = getEnv(ENV_PREFIX + "API_VERSION", "KUBERNETES_API_VERSION");
         if (ver == null)
             ver = "v1";
 
-        String labels = getEnv(ENV_PREFIX + "LABELS");
+        String labels = getEnv(ENV_PREFIX + "LABELS", "KUBERNETES_LABELS");
 
         namespace = URLEncoder.encode(namespace, "UTF-8");
         labels = labels == null ? null : URLEncoder.encode(labels, "UTF-8");
 
         url = String.format("%s://%s:%s/api/%s/namespaces/%s/pods", protocol, masterHost, masterPort, ver, namespace);
-        if (labels != null && labels.length() > 0)
+        if (labels != null && labels.length() > 0) {
             url = url + "?labelSelector=" + labels;
+        }
 
         // Fetch initial members
         heartbeat();

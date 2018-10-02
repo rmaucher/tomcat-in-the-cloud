@@ -96,7 +96,9 @@ public abstract class AbstractMembershipProvider extends MembershipProviderBase 
         Member[] announcedMembers = fetchMembers();
         // Add new members or refresh the members in the membership
         for (Member member : announcedMembers) {
-            membership.memberAlive(member);
+            if (membership.memberAlive(member)) {
+                membershipListener.memberAdded(member);
+            }
         }
         // Remove non refreshed members from the membership
         Member[] expired = membership.expire(100); // TODO: is 100ms a good value?
@@ -104,6 +106,7 @@ public abstract class AbstractMembershipProvider extends MembershipProviderBase 
             if (log.isDebugEnabled()) {
                 log.debug("Member is dead: " + member);
             }
+            membershipListener.memberDisappeared(member);
         }
     }
 
