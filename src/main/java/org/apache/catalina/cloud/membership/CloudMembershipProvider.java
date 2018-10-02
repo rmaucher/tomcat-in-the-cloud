@@ -38,7 +38,7 @@ import org.apache.catalina.tribes.membership.MembershipProviderBase;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
-public abstract class AbstractMembershipProvider extends MembershipProviderBase implements Heartbeat {
+public abstract class CloudMembershipProvider extends MembershipProviderBase implements Heartbeat {
     private static final Log log = LogFactory.getLog(KubernetesMembershipProvider.class);
 
     protected String url;
@@ -57,7 +57,7 @@ public abstract class AbstractMembershipProvider extends MembershipProviderBase 
     // FIXME: remove after Tomcat 9.0.13
     protected MembershipService service = null;
 
-    public AbstractMembershipProvider() {
+    public CloudMembershipProvider() {
         try {
             md5 = MessageDigest.getInstance("md5");
         } catch (NoSuchAlgorithmException e) {

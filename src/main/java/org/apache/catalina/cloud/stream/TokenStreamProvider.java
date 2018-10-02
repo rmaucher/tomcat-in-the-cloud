@@ -37,7 +37,6 @@ import javax.net.ssl.TrustManagerFactory;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
-
 public class TokenStreamProvider extends AbstractStreamProvider {
 
     private static final Log log = LogFactory.getLog(TokenStreamProvider.class);
@@ -53,9 +52,12 @@ public class TokenStreamProvider extends AbstractStreamProvider {
 
     public InputStream openStream(String url, Map<String, String> headers, int connectTimeout, int readTimeout)
             throws IOException {
+        // Set token header
         if (token != null) {
             headers.put("Authorization", "Bearer " + token);
         }
+
+        // Open HTTP connection
         URLConnection connection = openConnection(url, headers, connectTimeout, readTimeout);
 
         if (connection instanceof HttpsURLConnection) {

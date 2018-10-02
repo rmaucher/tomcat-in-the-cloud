@@ -34,17 +34,17 @@ import org.apache.catalina.tribes.MembershipService;
 import org.apache.catalina.tribes.membership.MemberImpl;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
+import org.apache.tomcat.util.codec.binary.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
 
-public class KubernetesMembershipProvider extends AbstractMembershipProvider {
+public class KubernetesMembershipProvider extends CloudMembershipProvider {
     private static final Log log = LogFactory.getLog(KubernetesMembershipProvider.class);
 
-    // TODO: what about "pure" Kubernetes?
-    private static final String ENV_PREFIX = "OPENSHIFT_KUBE_PING_";
+    private static final String CUSTOM_ENV_PREFIX = "OPENSHIFT_KUBE_PING_";
 
     @Override
     public void start(int level) throws Exception {
@@ -55,7 +55,7 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
         super.start(level);
 
         // Set up Kubernetes API parameters
-        String namespace = getEnv(ENV_PREFIX + "NAMESPACE", "KUBERNETES_NAMESPACE");
+        String namespace = getEnv("KUBERNETES_NAMESPACE", CUSTOM_ENV_PREFIX + "NAMESPACE");
         if (namespace == null || namespace.length() == 0)
             throw new RuntimeException("Namespace not set; clustering disabled");
 
@@ -63,12 +63,12 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
             log.debug(String.format("Namespace [%s] set; clustering enabled", namespace));
         }
 
-        String protocol = getEnv(ENV_PREFIX + "MASTER_PROTOCOL", "KUBERNETES_MASTER_PROTOCOL");
-        String masterHost = null;
-        String masterPort = null;
+        String protocol = getEnv("KUBERNETES_MASTER_PROTOCOL", CUSTOM_ENV_PREFIX + "MASTER_PROTOCOL");
+        String masterHost = getEnv("KUBERNETES_SERVICE_HOST", CUSTOM_ENV_PREFIX + "MASTER_HOST");
+        String masterPort = getEnv("KUBERNETES_SERVICE_PORT", CUSTOM_ENV_PREFIX + "MASTER_PORT");
 
-        String clientCertificateFile = getEnv(ENV_PREFIX + "CLIENT_CERT_FILE", "KUBERNETES_CLIENT_CERTIFICATE_FILE");
-        String caCertFile = getEnv(ENV_PREFIX + "CA_CERT_FILE", "KUBERNETES_CA_CERTIFICATE_FILE");
+        String clientCertificateFile = getEnv("KUBERNETES_CLIENT_CERTIFICATE_FILE", CUSTOM_ENV_PREFIX + "CLIENT_CERT_FILE");
+        String caCertFile = getEnv("KUBERNETES_CA_CERTIFICATE_FILE", CUSTOM_ENV_PREFIX + "CA_CERT_FILE");
         if (caCertFile == null) {
             caCertFile = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
         }
@@ -77,22 +77,12 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
             if (protocol == null) {
                 protocol = "https";
             }
-
-            masterHost = getEnv(ENV_PREFIX + "MASTER_HOST", "KUBERNETES_SERVICE_HOST");
-            masterPort = getEnv(ENV_PREFIX + "MASTER_PORT", "KUBERNETES_SERVICE_PORT");
-            String saTokenFile = getEnv(ENV_PREFIX + "SA_TOKEN_FILE", "SA_TOKEN_FILE");
+            String saTokenFile = getEnv("SA_TOKEN_FILE", CUSTOM_ENV_PREFIX + "SA_TOKEN_FILE");
             if (saTokenFile == null) {
                 saTokenFile = "/var/run/secrets/kubernetes.io/serviceaccount/token";
             }
-
             byte[] bytes = Files.readAllBytes(FileSystems.getDefault().getPath(saTokenFile));
-            String saToken = new String(bytes);
-
-            // Preemptively add authorization token in headers
-            // (TokenStreamProvider does it too, but too late)
-            headers.clear();
-            headers.put("Authorization", "Bearer " + saToken);
-            streamProvider = new TokenStreamProvider(saToken, caCertFile);
+            streamProvider = new TokenStreamProvider(StringUtils.newStringUsAscii(bytes), caCertFile);
         } else {
             if (protocol == null) {
                 protocol = "http";
@@ -104,14 +94,13 @@ public class KubernetesMembershipProvider extends AbstractMembershipProvider {
                 clientKeyAlgo = "RSA";
             }
             streamProvider = new CertificateStreamProvider(clientCertificateFile, clientKeyFile, clientKeyPassword, clientKeyAlgo, caCertFile);
-            throw new UnsupportedOperationException();
         }
 
-        String ver = getEnv(ENV_PREFIX + "API_VERSION", "KUBERNETES_API_VERSION");
+        String ver = getEnv("KUBERNETES_API_VERSION", CUSTOM_ENV_PREFIX + "API_VERSION");
         if (ver == null)
             ver = "v1";
 
-        String labels = getEnv(ENV_PREFIX + "LABELS", "KUBERNETES_LABELS");
+        String labels = getEnv("KUBERNETES_LABELS", CUSTOM_ENV_PREFIX + "LABELS");
 
         namespace = URLEncoder.encode(namespace, "UTF-8");
         labels = labels == null ? null : URLEncoder.encode(labels, "UTF-8");
