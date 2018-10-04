@@ -14,7 +14,7 @@
         <mainClass>org.example.tomcat.cloud.Main</mainClass>
         <tomcat.version>9.0.12</tomcat.version>
         <fabric8.version>3.3.4</fabric8.version>
-        <json.version>20170516</json.version>
+        <json.version>1.0.10</json.version>
 
         <!-- OpenShift service customization -->
         <port>8080</port>
@@ -56,8 +56,8 @@
             <version>${tomcat.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
+            <groupId>com.github.openjson</groupId>
+            <artifactId>openjson</artifactId>
             <version>${json.version}</version>
         </dependency>
     </dependencies>

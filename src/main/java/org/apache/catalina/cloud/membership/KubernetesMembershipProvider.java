@@ -19,6 +19,7 @@ package org.apache.catalina.cloud.membership;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URLEncoder;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -35,10 +36,11 @@ import org.apache.catalina.tribes.membership.MemberImpl;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.codec.binary.StringUtils;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
+
+import com.github.openjson.JSONArray;
+import com.github.openjson.JSONException;
+import com.github.openjson.JSONObject;
+import com.github.openjson.JSONTokener;
 
 
 public class KubernetesMembershipProvider extends CloudMembershipProvider {
@@ -132,7 +134,7 @@ public class KubernetesMembershipProvider extends CloudMembershipProvider {
         List<MemberImpl> members = new ArrayList<>();
 
         try (InputStream stream = streamProvider.openStream(url, headers, connectionTimeout, readTimeout)) {
-            JSONObject json = new JSONObject(new JSONTokener(stream));
+            JSONObject json = new JSONObject(new JSONTokener(new InputStreamReader(stream, "UTF-8")));
 
             JSONArray items = json.getJSONArray("items");
 
