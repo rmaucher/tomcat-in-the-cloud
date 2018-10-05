@@ -36,14 +36,49 @@ import org.apache.juli.logging.LogFactory;
 public class CloudMembershipService extends MembershipServiceBase implements ChannelListener, Heartbeat {
     private static final Log log = LogFactory.getLog(CloudMembershipService.class);
 
+    public static final String MEMBERSHIP_PROVIDER_CLASS_NAME = "membershipProviderClassName";
+    private static final String KUBE = "kubernetes";
+    private static final String KUBE_PROVIDER_CLASS = "org.apache.catalina.cloud.membership.KubernetesMembershipProvider";
+
     private MembershipProvider membershipProvider;
     private MemberImpl localMember;
 
     private byte[] payload;
     private byte[] domain;
 
+    /**
+     * Return a property.
+     * @param name the property name
+     * @return the property value
+     */
+    public Object getProperty(String name) {
+        return properties.getProperty(name);
+    }
+
+    /**
+     * Set a property.
+     * @param name the property name
+     * @param value the property value
+     * @return <code>true</code> if the property was successfully set
+     */
     public boolean setProperty(String name, String value) {
         return (properties.setProperty(name, value) == null);
+    }
+
+    /**
+     * Return the membership provider class.
+     * @return the classname
+     */
+    public String getMembershipProviderClassName() {
+        return properties.getProperty(MEMBERSHIP_PROVIDER_CLASS_NAME, KUBE);
+    }
+
+    /**
+     * Set the membership provider class.
+     * @param membershipProviderClassName the class name
+     */
+    public void setMembershipProviderClassName(String membershipProviderClassName) {
+        properties.setProperty(MEMBERSHIP_PROVIDER_CLASS_NAME, membershipProviderClassName);
     }
 
     @Override
@@ -53,12 +88,12 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
         }
 
         if (membershipProvider == null) {
-            String provider = properties.getProperty("membershipProviderClassName", "org.apache.catalina.cloud.membership.KubernetesMembershipProvider");
+            String provider = getMembershipProviderClassName();
+            if (KUBE.equals(provider)) {
+                provider = KUBE_PROVIDER_CLASS;
+            }
             if (log.isDebugEnabled()) {
                 log.debug("Using membershipProvider: " + provider);
-            }
-            if ("kubernetes".equals(provider)) {
-                provider = "org.apache.catalina.cloud.membership.KubernetesMembershipProvider";
             }
             membershipProvider = (MembershipProvider) Class.forName(provider).newInstance();
         }
