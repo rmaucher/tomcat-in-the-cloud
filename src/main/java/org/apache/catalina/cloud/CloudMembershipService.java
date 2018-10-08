@@ -18,23 +18,26 @@
 package org.apache.catalina.cloud;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-import org.apache.catalina.tribes.ChannelListener;
-import org.apache.catalina.tribes.Heartbeat;
+import javax.management.ObjectName;
+
 import org.apache.catalina.tribes.Member;
 import org.apache.catalina.tribes.MembershipProvider;
 import org.apache.catalina.tribes.MembershipService;
+import org.apache.catalina.tribes.jmx.JmxRegistry;
+import org.apache.catalina.tribes.membership.Constants;
 import org.apache.catalina.tribes.membership.MemberImpl;
 import org.apache.catalina.tribes.membership.MembershipServiceBase;
+import org.apache.catalina.tribes.util.StringManager;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
-public class CloudMembershipService extends MembershipServiceBase implements ChannelListener, Heartbeat {
+public class CloudMembershipService extends MembershipServiceBase {
     private static final Log log = LogFactory.getLog(CloudMembershipService.class);
+    protected static final StringManager sm = StringManager.getManager(Constants.Package);
 
     public static final String MEMBERSHIP_PROVIDER_CLASS_NAME = "membershipProviderClassName";
     private static final String KUBE = "kubernetes";
@@ -45,6 +48,8 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
 
     private byte[] payload;
     private byte[] domain;
+
+    private ObjectName oname = null;
 
     /**
      * Return a property.
@@ -70,7 +75,7 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
      * @return the classname
      */
     public String getMembershipProviderClassName() {
-        return properties.getProperty(MEMBERSHIP_PROVIDER_CLASS_NAME, KUBE);
+        return properties.getProperty(MEMBERSHIP_PROVIDER_CLASS_NAME);
     }
 
     /**
@@ -87,67 +92,54 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
             return;
         }
 
+        createOrUpdateLocalMember();
+        localMember.setServiceStartTime(System.currentTimeMillis());
+        localMember.setMemberAliveTime(100);
+        localMember.setPayload(payload);
+        localMember.setDomain(domain);
+
         if (membershipProvider == null) {
             String provider = getMembershipProviderClassName();
-            if (KUBE.equals(provider)) {
+            if (provider == null || KUBE.equals(provider)) {
                 provider = KUBE_PROVIDER_CLASS;
             }
             if (log.isDebugEnabled()) {
                 log.debug("Using membershipProvider: " + provider);
             }
             membershipProvider = (MembershipProvider) Class.forName(provider).newInstance();
-        }
-
-        // TODO: check that all required properties are set
-        if (log.isDebugEnabled()) {
-            log.debug("start(" + level + ")");
-        }
-
-        createOrUpdateLocalMember();
-        localMember.setMemberAliveTime(100);
-        localMember.setPayload(payload);
-        localMember.setDomain(domain);
-        localMember.setServiceStartTime(System.currentTimeMillis());
-
-        try {
+            membershipProvider.setMembershipListener(this);
             //FIXME: uncomment after Tomcat 9.0.13
             //membershipProvider.setMembershipService(this);
-            membershipProvider.setMembershipListener(this);
             membershipProvider.init(properties);
-            membershipProvider.start(level);
-        } catch (Exception e) {
-            log.error("Membership provider start failed", e);
         }
+        membershipProvider.start(level);
 
-        // FIXME: Temporary trick to get the heartbeat
-        channel.addChannelListener(this);
+        JmxRegistry jmxRegistry = JmxRegistry.getRegistry(channel);
+        if (jmxRegistry != null) {
+            oname = jmxRegistry.registerJmx(",component=Membership", this);
+        }
     }
 
     @Override
     public void stop(int level) {
-        if (log.isDebugEnabled()) {
-            log.debug("stop(" + level + ")");
-        }
-        if ((level & MembershipService.MBR_RX) == 0) {
-            return;
-        }
         try {
-            membershipProvider.stop(level);
+            if (membershipProvider != null && membershipProvider.stop(level)) {
+                if (oname != null) {
+                    JmxRegistry.getRegistry(channel).unregisterJmx(oname);
+                    oname = null;
+                }
+                membershipProvider = null;
+                channel = null;
+            }
         } catch (Exception e) {
-            log.error("Membership provider stop failed", e);
+            log.error(sm.getString("cloudMembershipService.stopFail", Integer.valueOf(level)), e);
         }
     }
 
     @Override
     public Member getLocalMember(boolean incAliveTime) {
-        if (log.isDebugEnabled()) {
-            log.debug("getLocalMember: " + incAliveTime);
-        }
-        if (incAliveTime && localMember != null)
+        if (incAliveTime && localMember != null) {
             localMember.setMemberAliveTime(System.currentTimeMillis() - localMember.getServiceStartTime());
-
-        if (log.isDebugEnabled() && localMember != null) {
-            log.info("aliveTime: " + localMember.getMemberAliveTime());
         }
         return localMember;
     }
@@ -164,9 +156,8 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
 
         try {
             createOrUpdateLocalMember();
-
-            localMember.setPayload(this.payload);
-            localMember.setDomain(this.domain);
+            localMember.setPayload(payload);
+            localMember.setDomain(domain);
             localMember.getData(true, true);
         } catch (IOException e) {
             throw new IllegalArgumentException(e);
@@ -183,10 +174,8 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
             localMember = new MemberImpl();
             try {
                 // Set localMember unique ID to md5 hash of hostname
-                localMember.setUniqueId(MessageDigest
-                        .getInstance("md5")
-                        .digest(InetAddress
-                                .getLocalHost().getHostName().getBytes()));
+                localMember.setUniqueId(MessageDigest.getInstance("md5")
+                        .digest(InetAddress.getLocalHost().getHostName().getBytes()));
             } catch (NoSuchAlgorithmException e) {
                 throw new IOException(e);
             }
@@ -224,19 +213,4 @@ public class CloudMembershipService extends MembershipServiceBase implements Cha
         this.membershipProvider = memberProvider;
     }
 
-    @Override
-    public void heartbeat() {
-        if (membershipProvider instanceof Heartbeat) {
-            ((Heartbeat) membershipProvider).heartbeat();
-        }
-    }
-
-    @Override
-    public void messageReceived(Serializable msg, Member sender) {
-    }
-
-    @Override
-    public boolean accept(Serializable msg, Member sender) {
-        return false;
-    }
 }

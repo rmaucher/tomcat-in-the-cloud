@@ -18,6 +18,7 @@
 package org.apache.catalina.cloud.membership;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.security.AccessController;
 import java.security.MessageDigest;
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.apache.catalina.cloud.stream.StreamProvider;
+import org.apache.catalina.tribes.ChannelListener;
 import org.apache.catalina.tribes.Heartbeat;
 import org.apache.catalina.tribes.Member;
 import org.apache.catalina.tribes.MembershipListener;
@@ -38,7 +40,7 @@ import org.apache.catalina.tribes.membership.MembershipProviderBase;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
-public abstract class CloudMembershipProvider extends MembershipProviderBase implements Heartbeat {
+public abstract class CloudMembershipProvider extends MembershipProviderBase implements Heartbeat, ChannelListener {
     private static final Log log = LogFactory.getLog(KubernetesMembershipProvider.class);
 
     protected String url;
@@ -96,6 +98,7 @@ public abstract class CloudMembershipProvider extends MembershipProviderBase imp
         if (membership == null) {
             membership = new Membership(service.getLocalMember(true));
         }
+        service.getChannel().addChannelListener(this);
     }
 
     @Override
@@ -137,4 +140,14 @@ public abstract class CloudMembershipProvider extends MembershipProviderBase imp
      * @return the member array
      */
     protected abstract Member[] fetchMembers();
+
+    @Override
+    public void messageReceived(Serializable msg, Member sender) {
+    }
+
+    @Override
+    public boolean accept(Serializable msg, Member sender) {
+        return false;
+    }
+
 }
